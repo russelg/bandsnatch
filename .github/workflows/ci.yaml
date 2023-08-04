@@ -19,7 +19,7 @@ jobs:
             runs-on: ubuntu-latest
           - name: aarch64
             target: arm64
-            runs-on: [self-hosted, linux, ARM64]
+            runs-on: ubuntu-latest
 
     runs-on: ${{ matrix.platform.runs-on }}
 
@@ -60,13 +60,13 @@ jobs:
           # should I even bother pushing?
           # ovyerus/bandsnatch:nightly
           tags: |
-            ghcr.io/ovyerus/bandsnatch:nightly
+            ghcr.io/russelg/bandsnatch:nightly
           # cache-from: type=local,src=/tmp/.buildx-cache
           # cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Extract binaries
         run: |
-          id=$(docker create --platform=linux/${{ matrix.platform.target }} ghcr.io/ovyerus/bandsnatch:nightly)
+          id=$(docker create --platform=linux/${{ matrix.platform.target }} ghcr.io/russelg/bandsnatch:nightly)
           docker cp $id:/bs/bandsnatch - > ./bandsnatch-${{ matrix.platform.name }}
           docker rm -v $id
 
@@ -180,11 +180,3 @@ jobs:
           body: Update the description for the release!
           draft: true
           files: ./out/*
-
-      - name: Update Homebrew tap
-        uses: mislav/bump-homebrew-formula-action@v2
-        with:
-          formula-name: bandsnatch
-          homebrew-tap: Ovyerus/homebrew-tap
-        env:
-          COMMITTER_TOKEN: ${{ secrets.TAP_COMMITTER_TOKEN }}
