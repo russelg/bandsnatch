@@ -23,6 +23,7 @@ pub struct DigitalItem {
     pub download_type_str: String,
     pub item_type: String,
     pub art_id: Option<ArtId>,
+    pub url_hints: Option<UrlHints>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
@@ -31,6 +32,11 @@ pub struct DigitalItemDownload {
     pub description: String,
     pub encoding_name: String, // Download is chosen by comparing this field and the `format` option.
     pub url: String,
+}
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct UrlHints {
+    pub subdomain: String,
 }
 
 impl DigitalItem {
@@ -55,11 +61,19 @@ impl DigitalItem {
         }
     }
 
+    pub fn folder_name(&self) -> String {
+        match &self.url_hints {
+            Some(d) => String::from(d.clone().subdomain),
+            None => String::from(&self.artist),
+        }
+    }
+
     pub fn destination_path<P: AsRef<Path>>(&self, root: P) -> String {
         root.as_ref()
-            .join(&self.artist)
+            .join(self.folder_name())
             .join(format!(
-                "{} ({})",
+                "{} - {} ({})",
+                make_string_fs_safe(&self.artist),
                 make_string_fs_safe(&self.title),
                 self.release_year()
             ))
