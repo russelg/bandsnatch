@@ -1,10 +1,13 @@
+// use cookie_store::{Cookie, CookieStore};
+use reqwest::cookie::Jar;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::fs;
 use std::vec::Vec;
 
 #[derive(Deserialize)]
-struct RawCookie {
+pub struct RawCookie {
+    #[serde(rename = "Host raw")]
+    host: String,
     #[serde(rename = "Name raw")]
     name: String,
     #[serde(rename = "Content raw")]
@@ -12,40 +15,50 @@ struct RawCookie {
 }
 
 /// Get hashmap of cookies from a `cookies.json` string.
-fn get_json_cookies(json: &str) -> HashMap<String, String> {
+fn get_json_cookies(json: &str) -> Vec<RawCookie> {
     let raw = serde_json::from_str::<Vec<RawCookie>>(json).unwrap();
-    let mut map = HashMap::<String, String>::new();
+    let mut vec = Vec::<RawCookie>::new();
     let cookie_iter = raw.iter();
 
     for c in cookie_iter {
-        map.insert(c.name.clone(), c.content.clone());
+        // TODO: better way than clone?
+        vec.push(RawCookie {
+            host: c.host.clone(),
+            name: c.name.clone(),
+            content: c.content.clone(),
+        })
     }
 
-    map
+    vec
 }
 
-fn get_text_cookies(content: &str) -> HashMap<String, String> {
+fn get_text_cookies(content: &str) -> Vec<RawCookie> {
     let lines = content.split('\n');
-    let mut map = HashMap::<String, String>::new();
+    let mut vec = Vec::<RawCookie>::new();
 
     for l in lines {
         if !l.starts_with('#') {
             let columns: Vec<&str> = l.split('\t').collect();
             // TODO: comment the significance of this
             if columns.len() == 7 {
-                map.insert(String::from(columns[5]), String::from(columns[6]));
+                vec.push(RawCookie {
+                    host: String::from(columns[0]),
+                    name: String::from(columns[5]),
+                    content: String::from(columns[6]),
+                })
             }
         }
     }
 
-    map
+    vec
 }
 
 // get cookies from firefox?
 
-pub fn get_bandcamp_cookies(path: Option<&str>) -> Result<HashMap<String, String>, String> {
+pub fn get_bandcamp_cookies(path: Option<&str>) -> Result<Vec<RawCookie>, String> {
     if let Some(path) = path {
-        let data = fs::read_to_string(path).unwrap_or_else(|_| panic!("Cannot read cookies file '{path}'"));
+        let data = fs::read_to_string(path)
+            .unwrap_or_else(|_| panic!("Cannot read cookies file '{path}'"));
         // TODO: need to return results from these functions
         let cookies = if path.ends_with(".json") {
             get_json_cookies(&data)
@@ -56,19 +69,26 @@ pub fn get_bandcamp_cookies(path: Option<&str>) -> Result<HashMap<String, String
         return Ok(cookies);
     }
 
-    // If no path provided, look for local cookies, or fallback to Firefox.
+    // If no path provided, look for local cookies
 
     get_bandcamp_cookies(Some("./cookies.json"))
         .or_else(|_| get_bandcamp_cookies(Some("./cookies.txt")))
         .or(Err(String::from("Failed to get cookies")))
 }
 
-pub fn cookies_to_string(cookies: &HashMap<String, String>) -> String {
-    let mut strings = Vec::<String>::new();
+pub fn fill_cookie_jar(cookies: Vec<RawCookie>) -> Jar {
+    let jar = Jar::default();
 
-    for (key, val) in cookies.iter() {
-        strings.push(format!("{key}={val}"));
+    for RawCookie {
+        host,
+        name,
+        content,
+    } in cookies
+    {
+        let host = url::Url::parse(&host).unwrap();
+        let cookie = format!("{name}={content}; Domain={}", host.domain().unwrap());
+        jar.add_cookie_str(&cookie, &host);
     }
 
-    strings.join("; ")
+    jar
 }

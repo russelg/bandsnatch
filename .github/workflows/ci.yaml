@@ -19,7 +19,7 @@ jobs:
             runs-on: ubuntu-latest
           - name: aarch64
             target: arm64
-            runs-on: ubuntu-latest
+            runs-on: [self-hosted, linux, ARM64]
 
     runs-on: ${{ matrix.platform.runs-on }}
 
@@ -73,8 +73,8 @@ jobs:
       - name: Upload ${{ matrix.platform.name }}
         uses: actions/upload-artifact@v2
         with:
-          name: bandsnatch-linux-${{ matrix.platform.name }}-musl
-          path: ./bandsnatch-${{ matrix.platform.name }}
+          name: bandsnatch-linux-${{ matrix.platform.name }}
+          path: ./result/bin/bandsnatch
 
   build-macos:
     runs-on: macos-11
@@ -132,7 +132,7 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: "bandsnatch-windows-x86_64-msvc"
+          name: "bandsnatch-windows-x86_64"
           path: "target/x86_64-pc-windows-msvc/release/bandsnatch.exe"
 
   # TODO: clippy lints & rustfmt
@@ -153,11 +153,11 @@ jobs:
           mkdir out && cd out
 
           declare -a arr=(
-            "windows-x86_64-msvc"
+            "windows-x86_64"
             "macos-x86_64"
             "macos-aarch64"
-            "linux-x86_64-musl"
-            "linux-aarch64-musl"
+            "linux-x86_64"
+            "linux-aarch64"
           )
 
           for target in "${arr[@]}"

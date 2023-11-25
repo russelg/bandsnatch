@@ -23,12 +23,11 @@ struct Args {
 enum Commands {
     /// Run Bandsnatch to download your collection.
     Run(cmds::run::Args),
-    // Get the raw JSON of a specific Bandcamp release for debugging.
-    // Release(cmds::release::Args),
+    DebugCollection(cmds::debug_collection::Args), // Get the raw JSON of a specific Bandcamp release for debugging.
+                                                   // Release(cmds::release::Args),
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // TODO: custom format
     // TODO: make default based on what release target
     let env = Env::default().filter_or(DEFAULT_FILTER_ENV, "bandsnatch=info");
@@ -38,7 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Run(cmd_args) => cmds::run::command(cmd_args).await,
+        Commands::Run(cmd_args) => cmds::run::command(cmd_args),
+        Commands::DebugCollection(cmd_args) => cmds::debug_collection::command(cmd_args),
         // Commands::Release(cmd_args) => cmds::release::command(cmd_args).await,
     }
 }
