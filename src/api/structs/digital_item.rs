@@ -19,6 +19,7 @@ pub struct DigitalItem {
     pub package_release_date: Option<String>,
     pub title: String,
     pub artist: String,
+    pub item_id: i64,
     pub download_type: Option<String>,
     pub download_type_str: String,
     pub item_type: String,

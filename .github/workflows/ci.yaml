@@ -19,7 +19,7 @@ jobs:
             runs-on: ubuntu-latest
           - name: aarch64
             target: arm64
-            runs-on: [self-hosted, linux, ARM64]
+            runs-on: ubuntu-latest
 
     runs-on: ${{ matrix.platform.runs-on }}
 
