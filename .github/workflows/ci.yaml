@@ -27,17 +27,54 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v22
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: nix build
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # - name: Cache Docker layers
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: /tmp/.buildx-cache
+      #     key:
+      #       "${{ runner.os }}-buildx-${{ matrix.platform.name }}-${{ github.sha
+      #       }}"
+      #     restore-keys: |
+      #       ${{ runner.os }}-buildx-${{ matrix.platform.name }}
+
+      - name: Login to GitHub Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build in Docker ${{ matrix.platform.name }}
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/${{ matrix.platform.target }}
+          push: false
+          load: true
+          # TODO: set :latest and versioned tag, on new version
+          # should I even bother pushing?
+          # ovyerus/bandsnatch:nightly
+          tags: |
+            ghcr.io/russelg/bandsnatch:nightly
+          # cache-from: type=local,src=/tmp/.buildx-cache
+          # cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Extract binaries
+        run: |
+          id=$(docker create --platform=linux/${{ matrix.platform.target }} ghcr.io/russelg/bandsnatch:nightly)
+          docker cp $id:/bs/bandsnatch - > ./bandsnatch-${{ matrix.platform.name }}
+          docker rm -v $id
 
       - name: Upload ${{ matrix.platform.name }}
         uses: actions/upload-artifact@v2
         with:
-          name: bandsnatch-linux-${{ matrix.platform.name }}
-          path: ./result/bin/bandsnatch
+          name: bandsnatch-linux-${{ matrix.platform.name }}-musl
+          path: ./bandsnatch-${{ matrix.platform.name }}
 
   build-macos:
     runs-on: macos-11
@@ -95,7 +132,7 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: "bandsnatch-windows-x86_64"
+          name: "bandsnatch-windows-x86_64-msvc"
           path: "target/x86_64-pc-windows-msvc/release/bandsnatch.exe"
 
   # TODO: clippy lints & rustfmt
@@ -116,11 +153,11 @@ jobs:
           mkdir out && cd out
 
           declare -a arr=(
-            "windows-x86_64"
+            "windows-x86_64-msvc"
             "macos-x86_64"
             "macos-aarch64"
-            "linux-x86_64"
-            "linux-aarch64"
+            "linux-x86_64-musl"
+            "linux-aarch64-musl"
           )
 
           for target in "${arr[@]}"
