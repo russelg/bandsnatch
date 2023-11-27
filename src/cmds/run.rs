@@ -194,7 +194,7 @@ pub async fn command(
 
                     // TODO: separate cache for failed downloads.
                     // TODO: retries
-                    skip_err!(api.download_item(&item, &path, &audio_format, &m).await);
+                    skip_err!(api.download_item(&item, &id, &path, &root.to_str().unwrap(), &audio_format, &m).await);
 
                     let cache = cache.lock().unwrap();
                     if !cache.content().unwrap().contains(&id) {

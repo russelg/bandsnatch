@@ -13,6 +13,18 @@ use tokio::{
     io::AsyncWriteExt,
 };
 
+macro_rules! skip_err {
+    ($res:expr) => {
+        match $res {
+            Ok(val) => val,
+            Err(e) => {
+                warn!("An error: {}; skipped.", e);
+                continue;
+            }
+        }
+    };
+}
+
 pub mod structs;
 use crate::api::structs::*;
 use crate::util::slice_string;
@@ -238,7 +250,9 @@ impl Api {
     pub async fn download_item(
         &self,
         item: &DigitalItem,
+        id: &str,
         path: &str,
+        root: &str,
         audio_format: &str,
         m: &indicatif::MultiProgress,
         // pb: &indicatif::ProgressBar,
@@ -276,11 +290,17 @@ impl Api {
             9,
         )
         .trim_matches('"');
-        m.suspend(|| debug!("Downloading as `{filename}` to `{path}`"));
+        let out_filename = format!("[{}] {}", id, filename);
+        m.suspend(|| debug!("Downloading as `{out_filename}` to `{path}`"));
 
         // TODO: drop file with `.part` extension instead, while downloading, and then rename when finished?.
 
-        let full_path = Path::new(path).join(filename);
+        let full_path = Path::new(root)
+            .join(".archives/")
+            .join(out_filename);
+        fs::create_dir_all(Path::new(root).join(".archives/"))?;
+        skip_err!(fs::create_dir_all(Path::new(root).join(".archives/")).await);
+
         let mut file = File::create(&full_path).await?;
         let mut downloaded: u64 = 0;
         let mut stream = res.bytes_stream();
@@ -307,8 +327,8 @@ impl Api {
             let mut archive = zip::ZipArchive::new(reader)?;
 
             archive.extract(path)?;
-            fs::remove_file(&full_path).await?;
-            m.suspend(|| debug!("Unzipped and removed original archive"));
+            // fs::remove_file(&full_path)?;
+            m.suspend(|| debug!("Unzipped original archive"));
         }
         // Cover folder downloading for singles
 
