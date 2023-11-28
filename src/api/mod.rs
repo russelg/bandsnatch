@@ -298,8 +298,7 @@ impl Api {
         let full_path = Path::new(root)
             .join(".archives/")
             .join(out_filename);
-        fs::create_dir_all(Path::new(root).join(".archives/"))?;
-        skip_err!(fs::create_dir_all(Path::new(root).join(".archives/")).await);
+        fs::create_dir_all(Path::new(root).join(".archives/")).await?;
 
         let mut file = File::create(&full_path).await?;
         let mut downloaded: u64 = 0;
